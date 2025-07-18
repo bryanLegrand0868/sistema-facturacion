@@ -51,4 +51,7 @@ npm start
 - Soporte para logo y QR de pagos
 
 ## Soporte
-Para soporte o preguntas, contactar a: [tu_correo@ejemplo.com] 
+Para soporte o preguntas, contactar a: Lryanstve@outlook.com 
+
+## Créditos
+Proyecto basado en ECL-FRUVER[(URL-del-original)](https://github.com/Cristiancano1236/ECL-Fruver) por Ciscode(https://ciscodedev.netlify.app/).
