@@ -15,6 +15,9 @@
                 display: none;
             }
         }
+        .factura-container { max-width: 800px; margin: auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .logo { max-width: 150px; }
 
         body {
             font-family: Arial, sans-serif;
@@ -75,6 +78,65 @@
         <button onclick="window.print()" class="print-button">Imprimir Factura</button>
         <button onclick="window.location.href='/'" class="print-button" style="background: #6c757d;">Volver</button>
     </div>
+
+    <div class="factura-container">
+        <div class="header">
+            <% if (config.logo_src) { %>
+                <img src="<%= config.logo_src %>" class="logo" alt="Logo">
+            <% } %>
+            <h1>Factura #<%= factura.id %></h1>
+        </div>
+
+        <!-- Datos del cliente -->
+        <div class="cliente-info">
+            <p>Cliente: <%= factura.cliente_nombre %></p>
+            <p>Dirección: <%= factura.direccion %></p>
+            <p>Teléfono: <%= factura.telefono %></p>
+            <p>Fecha: <%= new Date(factura.fecha).toLocaleDateString() %></p>
+        </div>
+
+        <!-- Tabla de productos -->
+        <table style="width: 100%; margin: 20px 0;">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unit.</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% detalles.forEach(function(detalle) { %>
+                    <tr>
+                        <td><%= detalle.producto_nombre %></td>
+                        <td><%= detalle.cantidad %> <%= detalle.unidad_medida %></td>
+                        <td>$<%= detalle.precio_unitario %></td>
+                        <td>$<%= detalle.subtotal %></td>
+                    </tr>
+                <% }); %>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
+                    <td><strong>$<%= factura.total %></strong></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- QR si existe -->
+        <% if (config.qr_src) { %>
+            <div style="text-align: center;">
+                <img src="<%= config.qr_src %>" style="width: 100px;" alt="QR">
+            </div>
+        <% } %>
+
+        <!-- Botones de acción -->
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+            <button onclick="window.print()">Imprimir Factura</button>
+            <button onclick="window.location.href='/ventas'">Volver a Ventas</button>
+        </div>
+    </div>
+
 
     <div class="factura">
         <% if (config.logo_src) { %>

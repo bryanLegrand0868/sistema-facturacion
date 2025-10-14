@@ -186,7 +186,8 @@ $(document).ready(function() {
             cantidad,
             unidad,
             precio,
-            subtotal
+            subtotal,
+            stock: productoSeleccionado.stock || 0
         };
 
         productosFactura.push(item);
@@ -356,105 +357,67 @@ $(document).ready(function() {
     };
 
     // Generar factura
-    $('#generarFactura').click(function() {
-        console.log('=== INICIO GENERACIÓN DE FACTURA ===');
-        const cliente_id = $('#cliente_id').val();
-        const forma_pago = $('#formaPago').val();
-        
-        console.log('Estado actual antes de generar factura:', {
-            cliente_id,
-            forma_pago,
-            productos: productosFactura,
-            total: totalFactura
-        });
+$('#generarFactura').click(async function() {
+    console.log('=== INICIO GENERACIÓN DE FACTURA ===');
+    const cliente_id = $('#cliente_id').val();
+    const forma_pago = $('#formaPago').val();
+    
+    if (!cliente_id) {
+        console.log('Error: No hay cliente seleccionado');
+        mostrarAlerta('warning', 'Por favor seleccione un cliente');
+        return;
+    }
 
-        // Verificar el ID del pedido antes de generar la factura
-        console.log('=== VERIFICACIÓN DE PEDIDO ACTUAL ===');
-        const pedidoIdAntes = localStorage.getItem('pedidoActualId');
-        console.log('ID del pedido en localStorage ANTES de generar factura:', pedidoIdAntes);
-        console.log('Tipo de dato del ID:', typeof pedidoIdAntes);
-        console.log('Pedidos guardados ANTES de generar factura:', pedidosGuardados);
-        
-        if (!cliente_id) {
-            console.log('Error: No hay cliente seleccionado');
-            mostrarAlerta('warning', 'Por favor seleccione un cliente');
-            return;
-        }
+    if (productosFactura.length === 0) {
+        console.log('Error: No hay productos en la factura');
+        mostrarAlerta('warning', 'Agregue al menos un producto a la factura');
+        return;
+    }
 
-        if (productosFactura.length === 0) {
-            console.log('Error: No hay productos en la factura');
-            mostrarAlerta('warning', 'Agregue al menos un producto a la factura');
-            return;
-        }
+    const factura = {
+        cliente_id,
+        total: totalFactura,
+        forma_pago,
+        productos: productosFactura
+    };
 
-        const factura = {
-            cliente_id,
-            total: totalFactura,
-            forma_pago,
-            productos: productosFactura
-        };
+    console.log('Factura a enviar:', factura);
 
-        console.log('Factura a enviar:', factura);
-
-        $.ajax({
-            url: '/api/facturas',
+    try {
+        const response = await fetch('/api/facturas', {
             method: 'POST',
-            data: JSON.stringify(factura),
-            contentType: 'application/json',
-            success: function(response) {
-                console.log('Factura generada exitosamente:', response);
-                
-                // Eliminar el pedido de localStorage si existe
-                console.log('=== PROCESO DE ELIMINACIÓN DE PEDIDO ===');
-                const pedidoId = localStorage.getItem('pedidoActualId');
-                console.log('ID del pedido en localStorage:', pedidoId);
-                console.log('Tipo de dato del ID recuperado:', typeof pedidoId);
-                
-                if (pedidoId) {
-                    console.log('Se encontró un ID de pedido para eliminar');
-                    console.log('Pedidos guardados antes de eliminar:', pedidosGuardados);
-                    console.log('Cantidad de pedidos antes:', pedidosGuardados.length);
-                    
-                    pedidosGuardados = pedidosGuardados.filter(p => {
-                        console.log('Comparando pedido:');
-                        console.log('ID del pedido en lista:', p.id, 'tipo:', typeof p.id);
-                        console.log('ID a eliminar:', pedidoId, 'tipo:', typeof pedidoId);
-                        const mantener = p.id != pedidoId;
-                        console.log('¿Se mantiene este pedido?:', mantener);
-                        return mantener;
-                    });
-                    
-                    console.log('Pedidos guardados después de eliminar:', pedidosGuardados);
-                    console.log('Cantidad de pedidos después:', pedidosGuardados.length);
-                    
-                        actualizarLocalStorage();
-                    console.log('LocalStorage actualizado');
-                    console.log('Verificación después de actualizar:', JSON.parse(localStorage.getItem('pedidos')));
-                    
-                    localStorage.removeItem('pedidoActualId');
-                    console.log('ID del pedido eliminado del localStorage');
-                    console.log('Verificación de eliminación:', localStorage.getItem('pedidoActualId'));
-                } else {
-                    console.log('No se encontró ID de pedido para eliminar');
-                }
-
-                // Mostrar la factura en el mismo modal
-                const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
-                $('#facturaFrame').attr('src', `/facturas/${response.id}/imprimir`);
-                facturaModal.show();
-
-                // Limpiar el formulario
-                limpiarFormulario();
-                mostrarAlerta('success', 'Factura generada exitosamente');
-                console.log('=== FIN GENERACIÓN DE FACTURA ===');
-            },
-            error: function(xhr) {
-                console.error('Error al generar factura:', xhr.responseText);
-                const error = xhr.responseJSON?.error || 'Error al generar la factura';
-                mostrarAlerta('error', error);
-            }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(factura)
         });
-    });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al generar la factura');
+        }
+
+        const data = await response.json();
+        console.log('Factura generada exitosamente:', data);
+
+        // Eliminar el pedido de localStorage si existe
+        const pedidoId = localStorage.getItem('pedidoActualId');
+        if (pedidoId) {
+            pedidosGuardados = pedidosGuardados.filter(p => p.id != pedidoId);
+            actualizarLocalStorage();
+            localStorage.removeItem('pedidoActualId');
+        }
+
+        // Limpiar el formulario
+        limpiarFormulario();
+        mostrarAlerta('success', 'Factura generada exitosamente');
+
+        // Redirigir a la página de impresión en una nueva pestaña
+        window.open(`/facturas/${data.id}/imprimir`, '_blank');
+
+    } catch (error) {
+        console.error('Error al generar factura:', error);
+        mostrarAlerta('error', error.message);
+    }
+});
 
     // Ver pedidos guardados
     $('#verPedidos').click(function() {

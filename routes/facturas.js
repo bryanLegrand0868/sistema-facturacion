@@ -1,62 +1,93 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const db = require('../db');
 
 // Crear nueva factura
-router.post('/', (req, res) => {
+router.post('/api/facturas', async (req, res) => {
     const { cliente_id, total, forma_pago, productos } = req.body;
-    
-    if (!cliente_id || !productos || productos.length === 0) {
+
+    if (!cliente_id || !Array.isArray(productos) || productos.length === 0) {
         return res.status(400).json({ error: 'Datos incompletos' });
     }
 
-    db.beginTransaction(err => {
-        if (err) {
-            console.error('Error al iniciar transacción:', err);
-            return res.status(500).json({ error: 'Error al crear factura' });
-        }
+    const connection = await db.getConnection();
+    
+    try {
+        // Iniciar transacción
+        await connection.beginTransaction();
 
         // Insertar factura
-        const sqlFactura = 'INSERT INTO facturas (cliente_id, total, forma_pago) VALUES (?, ?, ?)';
-        db.query(sqlFactura, [cliente_id, total, forma_pago], (err, result) => {
-            if (err) {
-                return db.rollback(() => {
-                    console.error('Error al crear factura:', err);
-                    res.status(500).json({ error: 'Error al crear factura' });
+        const [resultFactura] = await connection.query(
+            'INSERT INTO facturas (cliente_id, total, forma_pago) VALUES (?, ?, ?)',
+            [cliente_id, total, forma_pago]
+        );
+
+        const factura_id = resultFactura.insertId;
+
+        // Verificar stock y actualizar productos
+        for (const p of productos) {
+            // Verificar stock disponible
+            const [rows] = await connection.query(
+                'SELECT stock_actual FROM productos WHERE id = ? FOR UPDATE',
+                [p.producto_id]
+            );
+            
+            if (!rows.length) {
+                await connection.rollback();
+                return res.status(404).json({ 
+                    error: `Producto ${p.producto_id} no encontrado` 
+                });
+            }
+            
+            const stockActual = parseFloat(rows[0].stock_actual) || 0;
+            const cantidad = parseFloat(p.cantidad) || 0;
+            
+            if (stockActual < cantidad) {
+                await connection.rollback();
+                return res.status(400).json({ 
+                    error: `Stock insuficiente para el producto "${p.nombre}". Stock disponible: ${stockActual}` 
                 });
             }
 
-            const factura_id = result.insertId;
-            const sqlDetalle = 'INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio_unitario, unidad_medida, subtotal) VALUES ?';
-            const valores = productos.map(p => [
-                factura_id,
-                p.producto_id,
-                p.cantidad,
-                p.precio,
-                p.unidad,
-                p.subtotal
-            ]);
+            // Actualizar stock
+            await connection.query(
+                'UPDATE productos SET stock_actual = stock_actual - ? WHERE id = ?',
+                [cantidad, p.producto_id]
+            );
+        }
 
-            db.query(sqlDetalle, [valores], err => {
-                if (err) {
-                    return db.rollback(() => {
-                        console.error('Error al crear detalle de factura:', err);
-                        res.status(500).json({ error: 'Error al crear factura' });
-                    });
-                }
+        // Insertar detalles de factura
+        const sqlDetalle = 'INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio_unitario, unidad_medida, subtotal) VALUES ?';
+        const valores = productos.map(p => [
+            factura_id,
+            p.producto_id,
+            p.cantidad,
+            p.precio,
+            p.unidad,
+            p.subtotal
+        ]);
 
-                db.commit(err => {
-                    if (err) {
-                        return db.rollback(() => {
-                            console.error('Error al confirmar transacción:', err);
-                            res.status(500).json({ error: 'Error al crear factura' });
-                        });
-                    }
-                    res.status(201).json({ id: factura_id });
-                });
-            });
+        await connection.query(sqlDetalle, [valores]);
+
+        // Confirmar transacción
+        await connection.commit();
+        
+        res.status(201).json({ 
+            id: factura_id,
+            mensaje: 'Factura creada exitosamente' 
         });
-    });
+
+    } catch (error) {
+        // Revertir cambios en caso de error
+        await connection.rollback();
+        console.error('Error al crear factura:', error);
+        res.status(500).json({ 
+            error: 'Error al crear factura',
+            detalle: error.message 
+        });
+    } finally {
+        connection.release();
+    }
 });
 
 // Vista previa e impresión de factura
@@ -65,7 +96,7 @@ router.get('/:id/imprimir', async (req, res) => {
 
     try {
         // Obtener configuración con imágenes en base64
-        const [configRows] = await db.promise().query(
+        const [configRows] = await db.query(
             `SELECT *, 
              TO_BASE64(logo_data) as logo_base64,
              TO_BASE64(qr_data) as qr_base64
@@ -86,7 +117,7 @@ router.get('/:id/imprimir', async (req, res) => {
         }
 
         // Obtener datos de la factura
-        const [facturas] = await db.promise().query(
+        const [facturas] = await db.query(
             `SELECT f.*, c.nombre as cliente_nombre, c.direccion, c.telefono
              FROM facturas f
              JOIN clientes c ON f.cliente_id = c.id
@@ -99,7 +130,7 @@ router.get('/:id/imprimir', async (req, res) => {
         }
 
         // Obtener detalles de la factura
-        const [detalles] = await db.promise().query(
+        const [detalles] = await db.query(
             `SELECT d.*, p.nombre as producto_nombre
              FROM detalle_factura d
              JOIN productos p ON d.producto_id = p.id
@@ -116,7 +147,10 @@ router.get('/:id/imprimir', async (req, res) => {
 
     } catch (error) {
         console.error('Error al obtener datos:', error);
-        res.status(500).json({ error: 'Error al obtener datos de factura' });
+        res.status(500).json({ 
+            error: 'Error al obtener datos de factura',
+            detalle: error.message 
+        });
     }
 });
 
@@ -124,7 +158,7 @@ router.get('/:id/imprimir', async (req, res) => {
 router.get('/:id/detalles', async (req, res) => {
     try {
         // Obtener información de la factura
-        const [facturas] = await db.promise().query(
+        const [facturas] = await db.query(
             'SELECT f.*, c.nombre as cliente_nombre, c.direccion, c.telefono FROM facturas f ' +
             'JOIN clientes c ON f.cliente_id = c.id ' +
             'WHERE f.id = ?',
@@ -138,7 +172,7 @@ router.get('/:id/detalles', async (req, res) => {
         const factura = facturas[0];
 
         // Obtener productos de la factura
-        const [productos] = await db.promise().query(
+        const [productos] = await db.query(
             'SELECT d.cantidad, d.precio_unitario, d.unidad_medida, d.subtotal, p.nombre ' +
             'FROM detalle_factura d ' +
             'JOIN productos p ON d.producto_id = p.id ' +
@@ -173,4 +207,4 @@ router.get('/:id/detalles', async (req, res) => {
     }
 });
 
-module.exports = router; 
+module.exports = router;

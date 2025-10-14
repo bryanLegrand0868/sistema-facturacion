@@ -18,6 +18,25 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/productos - API para obtener productos con formato JSON
+router.get('/api/productos', async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            "SELECT id, codigo, nombre, precio_kg, precio_unidad, precio_libra, stock_actual, stock_minimo FROM productos ORDER BY nombre"
+        );
+        const productos = rows.map((p) => ({
+            ...p,
+            stock_actual: Number(p.stock_actual) || 0,
+            stock_minimo: Number(p.stock_minimo) || 0,
+            low_stock: (Number(p.stock_actual) || 0) <= (Number(p.stock_minimo) || 0),
+        }));
+        res.json(productos);
+    } catch (err) {
+        console.error("Error API productos:", err);
+        res.status(500).json({ error: "Error al obtener productos" });
+    }
+});
+
 // GET /productos/buscar - Buscar productos
 router.get('/buscar', async (req, res) => {
     try {
@@ -55,16 +74,24 @@ router.get('/:id', async (req, res) => {
 // POST /productos - Crear nuevo producto
 router.post('/', async (req, res) => {
     try {
-        const { codigo, nombre, precio_kg, precio_unidad, precio_libra } = req.body;
+        const { codigo, nombre, precio_kg, precio_unidad, precio_libra, stock_actual, stock_minimo } = req.body;
         
-        // Validar datos
+        // Validar datos requeridos
         if (!codigo || !nombre) {
             return res.status(400).json({ error: 'El código y nombre son requeridos' });
         }
 
-        const result = await db.query(
-            'INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra) VALUES (?, ?, ?, ?, ?)',
-            [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0]
+        const [result] = await db.query(
+            'INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra, stock_actual, stock_minimo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+                codigo, 
+                nombre, 
+                precio_kg || 0, 
+                precio_unidad || 0, 
+                precio_libra || 0, 
+                stock_actual || 0,
+                stock_minimo || 0
+            ]
         );
 
         res.status(201).json({ 
@@ -83,16 +110,25 @@ router.post('/', async (req, res) => {
 // PUT /productos/:id - Actualizar producto
 router.put('/:id', async (req, res) => {
     try {
-        const { codigo, nombre, precio_kg, precio_unidad, precio_libra } = req.body;
+        const { codigo, nombre, precio_kg, precio_unidad, precio_libra, stock_actual, stock_minimo } = req.body;
         
-        // Validar datos
+        // Validar datos requeridos
         if (!codigo || !nombre) {
             return res.status(400).json({ error: 'El código y nombre son requeridos' });
         }
 
-        const result = await db.query(
-            'UPDATE productos SET codigo = ?, nombre = ?, precio_kg = ?, precio_unidad = ?, precio_libra = ? WHERE id = ?',
-            [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0, req.params.id]
+        const [result] = await db.query(
+            'UPDATE productos SET codigo = ?, nombre = ?, precio_kg = ?, precio_unidad = ?, precio_libra = ?, stock_actual = ?, stock_minimo = ? WHERE id = ?',
+            [
+                codigo, 
+                nombre, 
+                precio_kg || 0, 
+                precio_unidad || 0, 
+                precio_libra || 0, 
+                stock_actual || 0,
+                stock_minimo || 0,
+                req.params.id
+            ]
         );
 
         if (result.affectedRows === 0) {
@@ -112,7 +148,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /productos/:id - Eliminar producto
 router.delete('/:id', async (req, res) => {
     try {
-        const result = await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
+        const [result] = await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
         
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Producto no encontrado' });
@@ -125,4 +161,4 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-module.exports = router; 
+module.exports = router;

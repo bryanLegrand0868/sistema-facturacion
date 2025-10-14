@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const buscarProducto = document.getElementById('buscarProducto');
     let timeoutId;
     
+    // Verificar stock bajo al cargar la página
+    verificarProductosConStockBajo();
+    
     // Manejar búsqueda de productos con debounce
     buscarProducto.addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
@@ -32,6 +35,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     });
 
+    // Verificar stock cuando se cambian los valores
+    const stockActual = document.getElementById('stockActual');
+    const stockMinimo = document.getElementById('stockMinimo');
+    const alertaStock = document.getElementById('alertaStock');
+    
+    if (stockActual && stockMinimo) {
+        stockActual.addEventListener('input', verificarStock);
+        stockMinimo.addEventListener('input', verificarStock);
+    }
+    
+    function verificarStock() {
+        const actual = parseFloat(stockActual.value) || 0;
+        const minimo = parseFloat(stockMinimo.value) || 0;
+        
+        if (minimo > 0 && actual <= minimo) {
+            alertaStock.classList.remove('d-none');
+            alertaStock.innerHTML = `
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Advertencia:</strong> El stock actual (${actual}) es menor o igual al stock mínimo establecido (${minimo}).
+            `;
+        } else {
+            alertaStock.classList.add('d-none');
+        }
+    }
+
     // Teclas rápidas
     document.addEventListener('keydown', function(e) {
         // Evitar que las teclas rápidas se activen cuando se está escribiendo en un input
@@ -47,8 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
                 case 'n': // Ctrl/Cmd + N para nuevo producto
                     e.preventDefault();
-                    modal.show();
-                    document.getElementById('codigo').focus();
+                    abrirModalNuevoProducto();
                     break;
             }
         } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
@@ -60,6 +87,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Función para abrir modal de nuevo producto
+    function abrirModalNuevoProducto() {
+        document.getElementById('productoId').value = '';
+        formProducto.reset();
+        document.getElementById('modalTitle').textContent = 'Nuevo Producto';
+        alertaStock.classList.add('d-none');
+        modal.show();
+        setTimeout(() => {
+            document.getElementById('codigo').focus();
+        }, 500);
+    }
+
     // Manejar guardado de producto
     document.getElementById('guardarProducto').addEventListener('click', async function() {
         if (!formProducto.checkValidity()) {
@@ -68,11 +107,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const productoData = {
-            codigo: document.getElementById('codigo').value,
-            nombre: document.getElementById('nombre').value,
+            codigo: document.getElementById('codigo').value.trim(),
+            nombre: document.getElementById('nombre').value.trim(),
             precio_kg: parseFloat(document.getElementById('precioKg').value) || 0,
             precio_unidad: parseFloat(document.getElementById('precioUnidad').value) || 0,
-            precio_libra: parseFloat(document.getElementById('precioLibra').value) || 0
+            precio_libra: parseFloat(document.getElementById('precioLibra').value) || 0,
+            stock_actual: parseFloat(document.getElementById('stockActual').value) || 0,
+            stock_minimo: parseFloat(document.getElementById('stockMinimo').value) || 0
         };
 
         const productoId = document.getElementById('productoId').value;
@@ -88,29 +129,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(productoData)
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const data = await response.json();
                 throw new Error(data.error || 'Error al guardar el producto');
             }
 
-            location.reload();
+            // Mostrar mensaje de éxito
+            mostrarAlerta(
+                productoId ? 'Producto actualizado exitosamente' : 'Producto creado exitosamente', 
+                'success'
+            );
+            
+            modal.hide();
+            
+            // Recargar la página después de un breve delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+            
         } catch (error) {
-            alert(error.message);
+            mostrarAlerta(error.message, 'danger');
         }
     });
 
-    // Limpiar formulario al abrir modal para nuevo producto
-    document.getElementById('nuevoProductoModal').addEventListener('show.bs.modal', function(event) {
-        if (!event.relatedTarget) return; // Si se abre para editar, no limpiar
-        
+    // Limpiar formulario al cerrar el modal
+    document.getElementById('nuevoProductoModal').addEventListener('hidden.bs.modal', function() {
         document.getElementById('productoId').value = '';
-        document.getElementById('formProducto').reset();
+        formProducto.reset();
         document.getElementById('modalTitle').textContent = 'Nuevo Producto';
-        
-        // Enfocar el campo de código después de que el modal se muestre completamente
-        setTimeout(() => {
-            document.getElementById('codigo').focus();
-        }, 500);
+        alertaStock.classList.add('d-none');
     });
 
     // Agregar tooltips para mostrar las teclas rápidas
@@ -131,41 +179,212 @@ document.addEventListener('DOMContentLoaded', function() {
             new bootstrap.Tooltip(element);
         }
     });
+
+    // Verificar productos con stock bajo al cargar
+    function verificarProductosConStockBajo() {
+        const rows = document.querySelectorAll('#productosTabla tr');
+        let productosConStockBajo = 0;
+        
+        rows.forEach(row => {
+            const stockActual = parseFloat(row.cells[5]?.textContent) || 0;
+            const stockMinimo = parseFloat(row.cells[6]?.textContent) || 0;
+            
+            if (stockMinimo > 0 && stockActual <= stockMinimo) {
+                productosConStockBajo++;
+            }
+        });
+        
+        if (productosConStockBajo > 0) {
+            mostrarNotificacionStockBajo(productosConStockBajo);
+        }
+    }
+
+    // Mostrar notificación de productos con stock bajo
+    function mostrarNotificacionStockBajo(cantidad) {
+        const toastHtml = `
+            <div class="toast position-fixed bottom-0 end-0 m-3" role="alert" data-bs-autohide="false" style="z-index: 9999;">
+                <div class="toast-header bg-warning text-dark">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong class="me-auto">Alerta de Inventario</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    <strong>${cantidad}</strong> producto(s) tienen stock bajo o están en el mínimo.
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-sm btn-warning" onclick="filtrarProductosStockBajo()">
+                            Ver productos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover toast anterior si existe
+        const toastExistente = document.querySelector('.toast');
+        if (toastExistente) {
+            toastExistente.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.querySelector('.toast');
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+    }
 });
 
-// Función para editar producto
+// Función para editar producto (fuera del DOMContentLoaded para ser accesible globalmente)
 function editarProducto(id) {
     fetch(`/productos/${id}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al cargar el producto');
+            }
+            return response.json();
+        })
         .then(producto => {
+            // Llenar el formulario con los datos del producto
             document.getElementById('productoId').value = producto.id;
             document.getElementById('codigo').value = producto.codigo;
             document.getElementById('nombre').value = producto.nombre;
-            document.getElementById('precioKg').value = producto.precio_kg;
-            document.getElementById('precioUnidad').value = producto.precio_unidad;
-            document.getElementById('precioLibra').value = producto.precio_libra;
+            document.getElementById('precioKg').value = producto.precio_kg || 0;
+            document.getElementById('precioUnidad').value = producto.precio_unidad || 0;
+            document.getElementById('precioLibra').value = producto.precio_libra || 0;
+            document.getElementById('stockActual').value = producto.stock_actual || 0;
+            document.getElementById('stockMinimo').value = producto.stock_minimo || 0;
             
+            // Verificar si hay alerta de stock
+            const actual = parseFloat(producto.stock_actual) || 0;
+            const minimo = parseFloat(producto.stock_minimo) || 0;
+            const alertaStock = document.getElementById('alertaStock');
+            
+            if (minimo > 0 && actual <= minimo) {
+                alertaStock.classList.remove('d-none');
+                alertaStock.innerHTML = `
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Advertencia:</strong> El stock actual (${actual}) es menor o igual al stock mínimo establecido (${minimo}).
+                `;
+            } else {
+                alertaStock.classList.add('d-none');
+            }
+            
+            // Cambiar título del modal y mostrarlo
             document.getElementById('modalTitle').textContent = 'Editar Producto';
             const modal = new bootstrap.Modal(document.getElementById('nuevoProductoModal'));
             modal.show();
         })
-        .catch(error => alert('Error al cargar el producto'));
+        .catch(error => {
+            mostrarAlerta('Error al cargar el producto: ' + error.message, 'danger');
+        });
 }
 
 // Función para eliminar producto
 function eliminarProducto(id) {
-    if (!confirm('¿Está seguro de eliminar este producto?')) {
-        return;
+    // Usar SweetAlert2 si está disponible, si no, usar confirm nativo
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '¿Está seguro?',
+            text: "Esta acción no se puede deshacer",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                procesarEliminacion(id);
+            }
+        });
+    } else {
+        if (confirm('¿Está seguro de eliminar este producto?\n\nEsta acción no se puede deshacer.')) {
+            procesarEliminacion(id);
+        }
     }
+}
 
+// Función auxiliar para procesar la eliminación
+function procesarEliminacion(id) {
     fetch(`/productos/${id}`, {
         method: 'DELETE'
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al eliminar el producto');
-            }
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Error al eliminar el producto');
+            });
+        }
+        return response.json();
+    })
+    .then(() => {
+        mostrarAlerta('Producto eliminado exitosamente', 'success');
+        setTimeout(() => {
             location.reload();
-        })
-        .catch(error => alert(error.message));
-} 
+        }, 1500);
+    })
+    .catch(error => {
+        mostrarAlerta(error.message, 'danger');
+    });
+}
+
+// Función para mostrar alertas
+function mostrarAlerta(mensaje, tipo) {
+    const alertHtml = `
+        <div class="alert alert-${tipo} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" 
+             style="z-index: 9999; min-width: 300px; box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);">
+            ${tipo === 'success' ? '<i class="bi bi-check-circle-fill me-2"></i>' : '<i class="bi bi-exclamation-triangle-fill me-2"></i>'}
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Remover alerta anterior si existe
+    const alertaExistente = document.querySelector('.alert.position-fixed');
+    if (alertaExistente) {
+        alertaExistente.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+        const alert = document.querySelector('.alert.position-fixed');
+        if (alert) {
+            alert.classList.remove('show');
+            setTimeout(() => alert.remove(), 300);
+        }
+    }, 5000);
+}
+
+// Función para filtrar productos con stock bajo
+function filtrarProductosStockBajo() {
+    const rows = document.querySelectorAll('#productosTabla tr');
+    
+    rows.forEach(row => {
+        const stockActual = parseFloat(row.cells[5]?.textContent) || 0;
+        const stockMinimo = parseFloat(row.cells[6]?.textContent) || 0;
+        
+        if (stockMinimo > 0 && stockActual <= stockMinimo) {
+            row.style.display = '';
+            row.classList.add('table-warning');
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Agregar botón para mostrar todos
+    const buscarContainer = document.querySelector('.search-box').parentElement;
+    if (!document.getElementById('mostrarTodos')) {
+        const btnMostrarTodos = document.createElement('button');
+        btnMostrarTodos.id = 'mostrarTodos';
+        btnMostrarTodos.className = 'btn btn-outline-secondary ms-2';
+        btnMostrarTodos.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Mostrar todos';
+        btnMostrarTodos.onclick = function() {
+            document.querySelectorAll('#productosTabla tr').forEach(row => {
+                row.style.display = '';
+                row.classList.remove('table-warning');
+            });
+            this.remove();
+        };
+        buscarContainer.appendChild(btnMostrarTodos);
+    }
+}

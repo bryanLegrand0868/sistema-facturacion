@@ -255,14 +255,14 @@
         }
 
         function mostrarFactura(id) {
-            document.getElementById('facturaFrame').src = `/api/facturas/${id}/imprimir`;
+            document.getElementById('facturaFrame').src = `/facturas/${id}/imprimir`;
             document.querySelector('#facturaModal .modal-title').textContent = `Factura #${id}`;
             facturaModal.show();
         }
 
         function mostrarDetalles(id) {
             $.ajax({
-                url: `/api/facturas/${id}/detalles`,
+                url: `/facturas/${id}/detalles`,
                 success: function(data) {
                     // Información del cliente
                     $('#detallesCliente').html(`
