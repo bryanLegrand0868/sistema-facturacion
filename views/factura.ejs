@@ -110,15 +110,15 @@
                     <tr>
                         <td><%= detalle.producto_nombre %></td>
                         <td><%= detalle.cantidad %> <%= detalle.unidad_medida %></td>
-                        <td>$<%= detalle.precio_unitario %></td>
-                        <td>$<%= detalle.subtotal %></td>
+                        <td>Q<%= detalle.precio_unitario %></td>
+                        <td>Q<%= detalle.subtotal %></td>
                     </tr>
                 <% }); %>
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
-                    <td><strong>$<%= factura.total %></strong></td>
+                    <td><strong>Q<%= factura.total %></strong></td>
                 </tr>
             </tfoot>
         </table>
@@ -189,15 +189,15 @@
                     <tr>
                         <td><%= item.producto_nombre %></td>
                         <td><%= Number(item.cantidad).toFixed(2) %><%= item.unidad_medida %></td>
-                        <td class="text-right">$<%= Number(item.precio_unitario).toFixed(2) %></td>
-                        <td class="text-right">$<%= Number(item.subtotal).toFixed(2) %></td>
+                        <td class="text-right">Q<%= Number(item.precio_unitario).toFixed(2) %></td>
+                        <td class="text-right">Q<%= Number(item.subtotal).toFixed(2) %></td>
                     </tr>
                 <% }); %>
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3" class="text-right"><strong>Total:</strong></td>
-                    <td class="text-right"><strong>$<%= Number(factura.total).toFixed(2) %></strong></td>
+                    <td class="text-right"><strong>Q<%= Number(factura.total).toFixed(2) %></strong></td>
                 </tr>
             </tfoot>
         </table>

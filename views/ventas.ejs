@@ -134,7 +134,7 @@
                                     <td><%= new Date(venta.fecha).toLocaleString() %></td>
                                     <td><%= venta.cliente_nombre %></td>
                                     <td><%= venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1) %></td>
-                                    <td class="text-end" data-total="<%= venta.total %>">$<%= Number(venta.total).toFixed(2) %></td>
+                                    <td class="text-end" data-total="<%= venta.total %>">Q<%= Number(venta.total).toFixed(2) %></td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-info me-1 btn-detalles" 
                                                 data-factura-id="<%= venta.id %>"
@@ -294,13 +294,13 @@
                                 <td>${producto.nombre}</td>
                                 <td class="text-end">${cantidad.toFixed(2)}</td>
                                 <td>${producto.unidad || 'N/A'}</td>
-                                <td class="text-end">$${precio.toFixed(2)}</td>
-                                <td class="text-end">$${subtotal.toFixed(2)}</td>
+                                <td class="text-end">Q${precio.toFixed(2)}</td>
+                                <td class="text-end">Q${subtotal.toFixed(2)}</td>
                             </tr>
                         `);
                     });
 
-                    $('#detallesTotal').text(`$${totalGeneral.toFixed(2)}`);
+                    $('#detallesTotal').text(`Q${totalGeneral.toFixed(2)}`);
                     detallesModal.show();
                 },
                 error: function() {
@@ -344,7 +344,7 @@
         function calcularTotalGeneral() {
             const totales = document.querySelectorAll('[data-total]');
             const total = Array.from(totales).reduce((sum, el) => sum + Number(el.dataset.total), 0);
-            document.getElementById('totalGeneral').textContent = `$${total.toFixed(2)}`;
+            document.getElementById('totalGeneral').textContent = `Q${total.toFixed(2)}`;
         }
 
         // Calcular total al cargar la página

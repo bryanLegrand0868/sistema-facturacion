@@ -115,7 +115,7 @@ $(document).ready(function() {
                     .html(`
                         <div><strong>${producto.codigo}</strong> - ${producto.nombre}</div>
                         <div class="small text-muted">
-                            KG: $${producto.precio_kg} | UND: $${producto.precio_unidad} | LB: $${producto.precio_libra}
+                            KG: Q${producto.precio_kg} | UND: Q${producto.precio_unidad} | LB: Q${producto.precio_libra}
                         </div>
                     `)
                     .click(function(e) {
@@ -208,8 +208,8 @@ $(document).ready(function() {
                     <td>${item.nombre}</td>
                     <td>${item.cantidad}</td>
                     <td>${item.unidad}</td>
-                    <td class="text-end">$${item.precio.toFixed(2)}</td>
-                    <td class="text-end">$${item.subtotal.toFixed(2)}</td>
+                    <td class="text-end">Q${item.precio.toFixed(2)}</td>
+                    <td class="text-end">Q${item.subtotal.toFixed(2)}</td>
                     <td class="text-center">
                         <button class="btn btn-danger btn-sm" onclick="eliminarProducto(${index})">
                             <i class="bi bi-trash"></i>
@@ -450,7 +450,7 @@ $('#generarFactura').click(async function() {
                         </small>
                     </td>
                     <td><small>${productosResumen}</small></td>
-                    <td>$${pedido.total.toFixed(2)}</td>
+                    <td>Q${pedido.total.toFixed(2)}</td>
                     <td>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-primary" onclick="cargarPedido(${index})" title="Cargar pedido">
