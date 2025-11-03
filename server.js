@@ -6,6 +6,10 @@ const app = express();
 const db = require('./db');
 const { spawn } = require('node:child_process');
 const http = require('http');
+const session = require('express-session');
+const flash = require('connect-flash');
+const authRoutes = require('./routes/auth');
+const { requireAuth } = require('./middleware/auth');
 
 // Crear directorios necesarios
 const createRequiredDirectories = () => {
@@ -34,6 +38,36 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json()); // Para procesar application/json
 app.use(express.urlencoded({ extended: true })); // Para procesar application/x-www-form-urlencoded
 
+app.use(session({
+    secret: 'tu-secreto-super-seguro-cambialo', // CAMBIAR EN PRODUCCIÓN
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 // 24 horas
+    }
+}));
+
+app.use(flash());
+
+app.use((req, res, next) => {
+    res.locals.user = req.session.userId ? {
+        id: req.session.userId,
+        username: req.session.username,
+        role: req.session.userRole,
+        nombre: req.session.nombreCompleto
+    } : null;
+    res.locals.success = req.flash('success');
+    res.locals.error = req.flash('error');
+    next();
+});
+
+app.use('/', authRoutes);
+
+// Proteger todas las rutas principales
+app.get('/', requireAuth, (req, res) => {
+    res.render('index');
+});
+
 // Rutas
 const productosRoutes = require('./routes/productos');
 const clientesRoutes = require('./routes/clientes');
@@ -42,36 +76,12 @@ const configuracionRoutes = require('./routes/configuracion');
 const ventasRoutes = require('./routes/ventas');
 const { resolve } = require('node:path');
 
-// Ruta principal
-app.get('/', (req, res) => {
-    res.render('index');
-});
-
 // Usar las rutas
-app.use('/productos', productosRoutes);
-app.use('/api/productos', productosRoutes);
-app.use('/clientes', clientesRoutes);
-app.use('/api/clientes', clientesRoutes);
-app.use('/facturas', facturasRoutes);
-app.use('/', facturasRoutes);
-app.use('/configuracion', configuracionRoutes);
-app.use('/ventas', ventasRoutes);
-
-// Ruta para la página de productos
-app.get('/productos', async (req, res) => {
-    try {
-        const [productos] = await db.query('SELECT * FROM productos ORDER BY nombre');
-        res.render('productos', { productos: productos || [] });
-    } catch (error) {
-        console.error('Error al obtener productos:', error);
-        res.status(500).render('error', {
-            error: {
-                message: 'Error al obtener productos',
-                stack: error.stack
-            }
-        });
-    }
-});
+app.use('/productos', requireAuth, productosRoutes);
+app.use('/clientes', requireAuth, clientesRoutes);
+app.use('/facturas', requireAuth, facturasRoutes);
+app.use('/configuracion', requireAuth, configuracionRoutes);
+app.use('/ventas', requireAuth, ventasRoutes);
 
 // Manejo de errores 404
 app.use((req, res, next) => {

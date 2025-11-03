@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,40 +11,50 @@
         body {
             background-color: #f8f9fa;
         }
+
         .navbar {
             background-color: #2c3e50;
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
         }
+
         .navbar-brand {
             color: white !important;
             font-weight: bold;
         }
+
         .card {
             border: none;
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
             margin-bottom: 1.5rem;
         }
+
         .card-header {
             background-color: #fff;
             border-bottom: 2px solid #f8f9fa;
             font-weight: 600;
         }
+
         .search-box {
             max-width: 300px;
         }
+
         .table th {
             border-top: none;
         }
+
         .action-buttons .btn {
             padding: 0.25rem 0.5rem;
         }
+
         .date-filter {
             max-width: 200px;
         }
+
         .table-container {
             max-height: calc(100vh - 300px);
             overflow-y: auto;
         }
+
         /* Estilo para las alertas personalizadas */
         .custom-alert {
             position: fixed;
@@ -53,33 +64,43 @@
             min-width: 300px;
             padding: 15px 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             display: flex;
             align-items: center;
             justify-content: space-between;
             animation: slideIn 0.3s ease-out;
         }
+
         .custom-alert.success {
             background-color: #d4edda;
             border-left: 4px solid #28a745;
             color: #155724;
         }
+
         .custom-alert.error {
             background-color: #f8d7da;
             border-left: 4px solid #dc3545;
             color: #721c24;
         }
+
         .custom-alert.warning {
             background-color: #fff3cd;
             border-left: 4px solid #ffc107;
             color: #856404;
         }
+
         @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
@@ -93,6 +114,9 @@
                 </a>
                 <a href="/configuracion" class="btn btn-outline-light">
                     <i class="bi bi-gear"></i>
+                </a>
+                <a href="/logout" class="btn btn-outline-danger">
+                    <i class="bi bi-box-arrow-right"></i>
                 </a>
             </div>
         </div>
@@ -130,27 +154,35 @@
                         <tbody id="ventasTabla">
                             <% ventas.forEach(function(venta) { %>
                                 <tr>
-                                    <td><%= venta.id %></td>
-                                    <td><%= new Date(venta.fecha).toLocaleString() %></td>
-                                    <td><%= venta.cliente_nombre %></td>
-                                    <td><%= venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1) %></td>
-                                    <td class="text-end" data-total="<%= venta.total %>">Q<%= Number(venta.total).toFixed(2) %></td>
+                                    <td>
+                                        <%= venta.id %>
+                                    </td>
+                                    <td>
+                                        <%= new Date(venta.fecha).toLocaleString() %>
+                                    </td>
+                                    <td>
+                                        <%= venta.cliente_nombre %>
+                                    </td>
+                                    <td>
+                                        <%= venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1) %>
+                                    </td>
+                                    <td class="text-end" data-total="<%= venta.total %>">Q<%=
+                                            Number(venta.total).toFixed(2) %>
+                                    </td>
                                     <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-info me-1 btn-detalles" 
-                                                data-factura-id="<%= venta.id %>"
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-title="Ver detalles">
+                                        <button class="btn btn-sm btn-outline-info me-1 btn-detalles"
+                                            data-factura-id="<%= venta.id %>" data-bs-toggle="tooltip"
+                                            data-bs-title="Ver detalles">
                                             <i class="bi bi-eye"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-primary btn-reimprimir" 
-                                                data-factura-id="<%= venta.id %>"
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-title="Reimprimir factura">
+                                        <button class="btn btn-sm btn-outline-primary btn-reimprimir"
+                                            data-factura-id="<%= venta.id %>" data-bs-toggle="tooltip"
+                                            data-bs-title="Reimprimir factura">
                                             <i class="bi bi-printer"></i>
                                         </button>
                                     </td>
                                 </tr>
-                            <% }); %>
+                                <% }); %>
                         </tbody>
                         <tfoot class="table-light fw-bold">
                             <tr>
@@ -236,16 +268,16 @@
     <script>
         const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
         const detallesModal = new bootstrap.Modal(document.getElementById('detallesModal'));
-        
+
         // Función para mostrar alertas personalizadas
         function mostrarAlerta(mensaje, tipo = 'success') {
             const alertaDiv = document.createElement('div');
             alertaDiv.className = `custom-alert ${tipo}`;
             alertaDiv.innerHTML = `
                 <div class="alert-content">
-                    <i class="bi ${tipo === 'success' ? 'bi-check-circle' : 
-                                  tipo === 'error' ? 'bi-x-circle' : 
-                                  'bi-exclamation-triangle'} me-2"></i>
+                    <i class="bi ${tipo === 'success' ? 'bi-check-circle' :
+                    tipo === 'error' ? 'bi-x-circle' :
+                        'bi-exclamation-triangle'} me-2"></i>
                     ${mensaje}
                 </div>
                 <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.remove()"></button>
@@ -263,7 +295,7 @@
         function mostrarDetalles(id) {
             $.ajax({
                 url: `/facturas/${id}/detalles`,
-                success: function(data) {
+                success: function (data) {
                     // Información del cliente
                     $('#detallesCliente').html(`
                         <p><strong>Nombre:</strong> ${data.cliente.nombre}</p>
@@ -282,13 +314,13 @@
                     const tbody = $('#detallesProductos');
                     tbody.empty();
                     let totalGeneral = 0;
-                    
+
                     data.productos.forEach(producto => {
                         const cantidad = producto.cantidad || 0;
                         const precio = producto.precio || 0;
                         const subtotal = producto.subtotal || 0;
                         totalGeneral += subtotal;
-                        
+
                         tbody.append(`
                             <tr>
                                 <td>${producto.nombre}</td>
@@ -303,7 +335,7 @@
                     $('#detallesTotal').text(`Q${totalGeneral.toFixed(2)}`);
                     detallesModal.show();
                 },
-                error: function() {
+                error: function () {
                     mostrarAlerta('Error al cargar los detalles de la factura', 'error');
                 }
             });
@@ -314,10 +346,10 @@
             frame.contentWindow.print();
         }
 
-        document.getElementById('filtrarVentas').addEventListener('click', function() {
+        document.getElementById('filtrarVentas').addEventListener('click', function () {
             const desde = document.getElementById('fechaDesde').value;
             const hasta = document.getElementById('fechaHasta').value;
-            
+
             if (!desde || !hasta) {
                 mostrarAlerta('Por favor seleccione ambas fechas', 'warning');
                 return;
@@ -331,7 +363,7 @@
             const hoy = new Date();
             const hace30Dias = new Date();
             hace30Dias.setDate(hace30Dias.getDate() - 30);
-            
+
             document.getElementById('fechaDesde').value = hace30Dias.toISOString().split('T')[0];
             document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
         }
@@ -352,18 +384,19 @@
 
         // Manejador para reimprimir facturas y ver detalles
         document.querySelectorAll('.btn-reimprimir').forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const facturaId = this.getAttribute('data-factura-id');
                 mostrarFactura(facturaId);
             });
         });
 
         document.querySelectorAll('.btn-detalles').forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const facturaId = this.getAttribute('data-factura-id');
                 mostrarDetalles(facturaId);
             });
         });
     </script>
 </body>
-</html> 
+
+</html>
