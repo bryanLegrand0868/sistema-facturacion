@@ -49,6 +49,7 @@ app.use(session({
 
 app.use(flash());
 
+// Middleware para agregar variables locales
 app.use((req, res, next) => {
     res.locals.user = req.session.userId ? {
         id: req.session.userId,
@@ -61,22 +62,26 @@ app.use((req, res, next) => {
     next();
 });
 
+// IMPORTANTE: Rutas de autenticación PRIMERO (login, register, logout)
 app.use('/', authRoutes);
 
-// Proteger todas las rutas principales
-app.get('/', requireAuth, (req, res) => {
-    res.render('index');
+// Ruta principal - redirigir a login si no está autenticado
+app.get('/', (req, res) => {
+    if (req.session.userId) {
+        res.render('index');
+    } else {
+        res.redirect('/login');
+    }
 });
 
-// Rutas
+// Rutas protegidas
 const productosRoutes = require('./routes/productos');
 const clientesRoutes = require('./routes/clientes');
 const facturasRoutes = require('./routes/facturas');
 const configuracionRoutes = require('./routes/configuracion');
 const ventasRoutes = require('./routes/ventas');
-const { resolve } = require('node:path');
 
-// Usar las rutas
+// Usar las rutas (todas protegidas)
 app.use('/productos', requireAuth, productosRoutes);
 app.use('/clientes', requireAuth, clientesRoutes);
 app.use('/facturas', requireAuth, facturasRoutes);
@@ -95,7 +100,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3300;
 
 function abrirNavegador(url) {
     try {
@@ -133,6 +138,7 @@ function checkUrlUp(url, timeoutMs = 5000) {
         });
     });
 }
+
 async function waitForServerAndOpen(url, maxRetries = 25) {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         const up = await checkUrlUp(url, 2000); // 2s timeout por intento
@@ -169,4 +175,4 @@ async function startServer() {
     }
 }
 
-startServer(); 
+startServer();

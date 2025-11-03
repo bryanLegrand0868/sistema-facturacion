@@ -46,8 +46,17 @@ router.post('/login', async (req, res) => {
         req.session.userRole = user.rol;
         req.session.nombreCompleto = user.nombre_completo;
         
-        req.flash('success', `Bienvenido ${user.nombre_completo}`);
-        res.redirect('/');
+        // Guardar la sesión antes de redirigir
+        req.session.save((err) => {
+            if (err) {
+                console.error('Error al guardar sesión:', err);
+                req.flash('error', 'Error al iniciar sesión');
+                return res.redirect('/login');
+            }
+            
+            req.flash('success', `Bienvenido ${user.nombre_completo}`);
+            res.redirect('/');
+        });
         
     } catch (error) {
         console.error('Error en login:', error);
@@ -58,18 +67,26 @@ router.post('/login', async (req, res) => {
 
 // Logout
 router.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/login');
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error al cerrar sesión:', err);
+        }
+        res.redirect('/login');
+    });
 });
 
-// Registro (opcional)
+// Registro (GET)
 router.get('/register', (req, res) => {
+    if (req.session.userId) {
+        return res.redirect('/');
+    }
     res.render('register', { 
         error: req.flash('error'),
         success: req.flash('success')
     });
 });
 
+// Registro (POST)
 router.post('/register', async (req, res) => {
     const { username, email, password, nombre_completo } = req.body;
     
@@ -90,11 +107,11 @@ router.post('/register', async (req, res) => {
         
         // Insertar usuario
         await db.query(
-            'INSERT INTO usuarios (username, email, password, nombre_completo) VALUES (?, ?, ?, ?)',
-            [username, email, hashedPassword, nombre_completo]
+            'INSERT INTO usuarios (username, email, password, nombre_completo, rol, activo) VALUES (?, ?, ?, ?, ?, ?)',
+            [username, email, hashedPassword, nombre_completo, 'vendedor', true]
         );
         
-        req.flash('success', 'Usuario registrado exitosamente');
+        req.flash('success', 'Usuario registrado exitosamente. Ya puedes iniciar sesión.');
         res.redirect('/login');
         
     } catch (error) {
