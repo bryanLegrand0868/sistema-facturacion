@@ -6,6 +6,7 @@ const app = express();
 const db = require('./db');
 const { spawn } = require('node:child_process');
 const http = require('http');
+const backupManager = require('./backup-manager');
 
 // Crear directorios necesarios
 const createRequiredDirectories = () => {
@@ -56,6 +57,85 @@ app.use('/facturas', facturasRoutes);
 app.use('/', facturasRoutes);
 app.use('/configuracion', configuracionRoutes);
 app.use('/ventas', ventasRoutes);
+
+// Rutas de Backup
+app.get('/backup', (req, res) => {
+    res.render('backup');
+});
+
+// API para crear backup
+app.post('/api/backup/create', async (req, res) => {
+    try {
+        const result = await backupManager.createBackup('manual');
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Error creando backup:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// API para restaurar backup
+app.post('/api/backup/restore', async (req, res) => {
+    try {
+        const { filename } = req.body;
+        if (!filename) {
+            return res.status(400).json({ success: false, message: 'Filename es requerido' });
+        }
+        const result = await backupManager.restoreBackup(filename);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Error restaurando backup:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// API para obtener lista de backups
+app.get('/api/backup/list', (req, res) => {
+    try {
+        const backups = backupManager.getBackupList();
+        res.json(backups);
+    } catch (error) {
+        console.error('Error obteniendo lista de backups:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// API para limpiar backups antiguos
+app.post('/api/backup/clean', async (req, res) => {
+    try {
+        const result = await backupManager.cleanOldBackups();
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Error limpiando backups:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// API para eliminar backup específico
+app.delete('/api/backup/delete', async (req, res) => {
+    try {
+        const { filename } = req.body;
+        if (!filename) {
+            return res.status(400).json({ success: false, message: 'Filename es requerido' });
+        }
+        const result = await backupManager.deleteBackup(filename);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Error eliminando backup:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// API para obtener estado USB
+app.get('/api/backup/usb-status', (req, res) => {
+    try {
+        const status = backupManager.getUSBStatus();
+        res.json(status);
+    } catch (error) {
+        console.error('Error obteniendo estado USB:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // Ruta para la página de productos
 app.get('/productos', async (req, res) => {

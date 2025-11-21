@@ -56,6 +56,9 @@
                 <a href="/" class="btn btn-outline-light me-2">
                     <i class="bi bi-house-fill"></i>
                 </a>
+                <a href="/backup" class="btn btn-outline-light me-2">
+                    <i class="bi bi-hdd-network"></i>
+                </a>
                 <a href="/configuracion" class="btn btn-outline-light">
                     <i class="bi bi-gear"></i>
                 </a>
@@ -94,9 +97,9 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Nombre</th>
-                                <th class="text-end">Precio KG</th>
                                 <th class="text-end">Precio UND</th>
-                                <th class="text-end">Precio LB</th>
+                                <th class="text-end">Precio PAQ</th>
+                                <th class="text-end">Precio CAJA</th>
                                 <th class="text-end">Stock Actual</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
@@ -110,9 +113,9 @@
                                     <td>
                                         <%= producto.nombre %>
                                     </td>
-                                    <td class="text-end">Q<%= (Number(producto.precio_kg) || 0).toFixed(2) %>
-                                    </td>
                                     <td class="text-end">Q<%= (Number(producto.precio_unidad) || 0).toFixed(2) %>
+                                    </td>
+                                    <td class="text-end">Q<%= (Number(producto.precio_kg) || 0).toFixed(2) %>
                                     </td>
                                     <td class="text-end">Q<%= (Number(producto.precio_libra) || 0).toFixed(2) %>
                                     </td>
@@ -185,13 +188,6 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label class="form-label">Precio KG</label>
-                                    <input type="number" class="form-control" id="precioKg" step="0.01" min="0"
-                                        required>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
                                     <label class="form-label">Precio UND</label>
                                     <input type="number" class="form-control" id="precioUnidad" step="0.01" min="0"
                                         required>
@@ -199,7 +195,14 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label class="form-label">Precio LB</label>
+                                    <label class="form-label">Precio PAQ</label>
+                                    <input type="number" class="form-control" id="precioKg" step="0.01" min="0"
+                                        required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Precio CAJA</label>
                                     <input type="number" class="form-control" id="precioLibra" step="0.01" min="0"
                                         required>
                                 </div>

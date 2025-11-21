@@ -115,7 +115,7 @@ $(document).ready(function() {
                     .html(`
                         <div><strong>${producto.codigo}</strong> - ${producto.nombre}</div>
                         <div class="small text-muted">
-                            KG: Q${producto.precio_kg} | UND: Q${producto.precio_unidad} | LB: Q${producto.precio_libra}
+                            UND: Q${producto.precio_unidad} | PAQ: Q${producto.precio_kg} | CAJA: Q${producto.precio_libra}
                         </div>
                     `)
                     .click(function(e) {
@@ -146,14 +146,17 @@ $(document).ready(function() {
     function actualizarPrecioSegunUnidad(producto, unidad) {
         let precio = 0;
         switch(unidad) {
-            case 'KG':
-                precio = producto.precio_kg;
-                break;
             case 'UND':
                 precio = producto.precio_unidad;
                 break;
-            case 'LB':
+            case 'PAQ':
+                precio = producto.precio_kg;
+                break;
+            case 'CAJA':
                 precio = producto.precio_libra;
+                break;
+            case 'DOCENA':
+                precio = producto.precio_unidad;
                 break;
         }
         $('#precio').val(precio);
@@ -234,7 +237,7 @@ $(document).ready(function() {
         $('#producto_id').val('');
         $('#cantidad').val('');
         $('#precio').val('');
-        $('#unidadMedida').val('KG');
+        $('#unidadMedida').val('UND');
         productoSeleccionado = null;
     }
 
