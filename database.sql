@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS detalle_factura (
     producto_id INT,
     cantidad DECIMAL(10,2) NOT NULL,
     precio_unitario DECIMAL(10,2) NOT NULL,
-    unidad_medida ENUM('KG', 'UND', 'LB') DEFAULT 'KG',
+    unidad_medida ENUM('UND', 'PAQ', 'CAJA', 'KG', 'LB') DEFAULT 'UND',
     subtotal DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (factura_id) REFERENCES facturas(id),
     FOREIGN KEY (producto_id) REFERENCES productos(id)

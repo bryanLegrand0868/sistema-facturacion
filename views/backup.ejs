@@ -116,9 +116,10 @@
                             Información
                         </h5>
                         <div class="mt-3">
-                            <p class="mb-2"><strong>Total de Backups:</strong> <span id="totalBackups">0</span></p>
+                            <p class="mb-2"><strong>Backups automáticos:</strong> <span id="totalBackups">0</span></p>
                             <p class="mb-2"><strong>Máximo permitido:</strong> 10 backups</p>
-                            <p class="mb-0"><strong>Ubicación:</strong> <code>/backups</code></p>
+                            <p class="mb-2"><strong>Ubicación:</strong> <code>/backups</code></p>
+                            <p class="mb-0 text-muted small">Los backups manuales se descargan directamente</p>
                         </div>
                     </div>
                 </div>
@@ -135,8 +136,8 @@
                 <div class="row">
                     <div class="col-md-4 mb-3 mb-md-0">
                         <button class="btn btn-primary w-100" id="btnCrearBackup">
-                            <i class="bi bi-plus-circle me-2"></i>
-                            Crear Backup Manual
+                            <i class="bi bi-download me-2"></i>
+                            Descargar Backup
                         </button>
                     </div>
                     <div class="col-md-4 mb-3 mb-md-0">
@@ -246,19 +247,40 @@
                         headers: { 'Content-Type': 'application/json' }
                     });
 
-                    const data = await response.json();
+                    if (response.ok) {
+                        // Obtener el blob del archivo
+                        const blob = await response.blob();
 
-                    if (data.success) {
-                        mostrarAlerta('success', 'Backup creado exitosamente');
-                        cargarListaBackups();
+                        // Obtener el nombre del archivo del header
+                        const contentDisposition = response.headers.get('Content-Disposition');
+                        let filename = 'backup.sql';
+                        if (contentDisposition) {
+                            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                            if (filenameMatch) {
+                                filename = filenameMatch[1];
+                            }
+                        }
+
+                        // Crear un link temporal y descargarlo
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+
+                        mostrarAlerta('success', 'Backup creado y descargado exitosamente. Selecciona dónde guardarlo.');
                     } else {
+                        const data = await response.json();
                         throw new Error(data.message || 'Error al crear backup');
                     }
                 } catch (error) {
                     mostrarAlerta('error', 'Error al crear backup: ' + error.message);
                 } finally {
                     btn.prop('disabled', false);
-                    btn.html('<i class="bi bi-plus-circle me-2"></i>Crear Backup Manual');
+                    btn.html('<i class="bi bi-download me-2"></i>Descargar Backup');
                 }
             });
 

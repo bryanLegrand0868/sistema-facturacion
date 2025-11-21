@@ -63,11 +63,15 @@ app.get('/backup', (req, res) => {
     res.render('backup');
 });
 
-// API para crear backup
+// API para crear backup manual (descarga directa)
 app.post('/api/backup/create', async (req, res) => {
     try {
-        const result = await backupManager.createBackup('manual');
-        res.json({ success: true, ...result });
+        const result = await backupManager.createBackup('manual', false);
+
+        // Enviar como descarga directa
+        res.setHeader('Content-Type', 'application/sql');
+        res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+        res.send(result.sqlContent);
     } catch (error) {
         console.error('Error creando backup:', error);
         res.status(500).json({ success: false, message: error.message });

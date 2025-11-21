@@ -155,9 +155,6 @@ $(document).ready(function() {
             case 'CAJA':
                 precio = producto.precio_libra;
                 break;
-            case 'DOCENA':
-                precio = producto.precio_unidad;
-                break;
         }
         $('#precio').val(precio);
     }

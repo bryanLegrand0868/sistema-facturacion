@@ -1,9 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
 const cron = require('node-cron');
+const db = require('./db');
 
 require('dotenv').config();
 
@@ -70,17 +68,16 @@ class BackupManager {
 
                     for (const dir of dirs) {
                         const fullPath = path.join(mediaPath, dir);
-                        const stat = fs.statSync(fullPath);
-
-                        if (stat.isDirectory()) {
-                            // Verificar si es un directorio válido y accesible
-                            try {
+                        try {
+                            const stat = fs.statSync(fullPath);
+                            if (stat.isDirectory()) {
+                                // Verificar si es un directorio válido y accesible
                                 fs.accessSync(fullPath, fs.constants.W_OK);
                                 usbFound = fullPath;
                                 break;
-                            } catch (err) {
-                                // No es accesible
                             }
+                        } catch (err) {
+                            // No es accesible, continuar
                         }
                     }
                 }
@@ -101,40 +98,113 @@ class BackupManager {
     }
 
     /**
+     * Generar SQL para backup de la base de datos
+     */
+    async generateBackupSQL() {
+        const dbName = process.env.DB_NAME || 'sistema_facturacion';
+        let sqlContent = `-- Backup de ${dbName}\n`;
+        sqlContent += `-- Fecha: ${new Date().toLocaleString('es-GT')}\n\n`;
+        sqlContent += `SET FOREIGN_KEY_CHECKS=0;\n\n`;
+
+        try {
+            // Obtener todas las tablas
+            const [tables] = await db.query('SHOW TABLES');
+            const tableKey = `Tables_in_${dbName}`;
+
+            for (const tableRow of tables) {
+                const tableName = tableRow[tableKey];
+
+                // Obtener estructura de la tabla
+                const [createTableResult] = await db.query(`SHOW CREATE TABLE ${tableName}`);
+                const createTableSQL = createTableResult[0]['Create Table'];
+
+                sqlContent += `-- Estructura para tabla ${tableName}\n`;
+                sqlContent += `DROP TABLE IF EXISTS \`${tableName}\`;\n`;
+                sqlContent += `${createTableSQL};\n\n`;
+
+                // Obtener datos de la tabla
+                const [rows] = await db.query(`SELECT * FROM ${tableName}`);
+
+                if (rows.length > 0) {
+                    sqlContent += `-- Datos para tabla ${tableName}\n`;
+
+                    // Obtener nombres de columnas
+                    const [columns] = await db.query(`SHOW COLUMNS FROM ${tableName}`);
+                    const columnNames = columns.map(col => `\`${col.Field}\``).join(', ');
+
+                    // Insertar datos en lotes de 100 filas
+                    for (let i = 0; i < rows.length; i += 100) {
+                        const batch = rows.slice(i, i + 100);
+                        const values = batch.map(row => {
+                            const vals = Object.values(row).map(val => {
+                                if (val === null) return 'NULL';
+                                if (val instanceof Date) return `'${val.toISOString().slice(0, 19).replace('T', ' ')}'`;
+                                if (typeof val === 'string') return `'${val.replace(/'/g, "''").replace(/\\/g, '\\\\')}'`;
+                                if (Buffer.isBuffer(val)) return `'${val.toString('hex')}'`;
+                                return val;
+                            }).join(', ');
+                            return `(${vals})`;
+                        }).join(',\n    ');
+
+                        sqlContent += `INSERT INTO \`${tableName}\` (${columnNames}) VALUES\n    ${values};\n`;
+                    }
+
+                    sqlContent += '\n';
+                }
+            }
+
+            sqlContent += `SET FOREIGN_KEY_CHECKS=1;\n`;
+
+            return sqlContent;
+        } catch (error) {
+            console.error('Error generando SQL de backup:', error);
+            throw new Error(`Error al generar backup SQL: ${error.message}`);
+        }
+    }
+
+    /**
      * Crear un backup de la base de datos
      * @param {string} type - Tipo de backup ('manual' o 'auto')
+     * @param {boolean} saveToFile - Si se debe guardar en archivo (default: true)
      */
-    async createBackup(type = 'manual') {
+    async createBackup(type = 'manual', saveToFile = true) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
                          new Date().toLocaleTimeString('es-GT', { hour12: false }).replace(/:/g, '-');
         const filename = `backup_${type}_${timestamp}.sql`;
-        const filepath = path.join(this.backupDir, filename);
-
-        // Obtener credenciales de la base de datos
-        const dbHost = process.env.DB_HOST || 'localhost';
-        const dbUser = process.env.DB_USER || 'root';
-        const dbPassword = process.env.DB_PASSWORD || '';
-        const dbName = process.env.DB_NAME || 'sistema_facturacion';
-
-        // Construir comando mysqldump
-        const command = `mysqldump -h ${dbHost} -u ${dbUser} ${dbPassword ? `-p${dbPassword}` : ''} ${dbName} > "${filepath}"`;
 
         try {
-            await execPromise(command);
-            console.log(`Backup creado exitosamente: ${filename}`);
+            // Generar SQL del backup
+            const sqlContent = await this.generateBackupSQL();
 
-            // Si hay USB conectado, copiar también ahí
-            if (this.usbDir) {
-                await this.copyToUSB(filepath, filename);
+            if (saveToFile) {
+                const filepath = path.join(this.backupDir, filename);
+
+                // Guardar en archivo
+                fs.writeFileSync(filepath, sqlContent, 'utf8');
+                console.log(`Backup creado exitosamente: ${filename}`);
+
+                // Si hay USB conectado, copiar también ahí
+                if (this.usbDir) {
+                    await this.copyToUSB(filepath, filename);
+                }
+
+                return {
+                    success: true,
+                    filename,
+                    filepath,
+                    size: fs.statSync(filepath).size,
+                    date: new Date()
+                };
+            } else {
+                // Retornar el SQL sin guardar en archivo (para descarga directa)
+                return {
+                    success: true,
+                    filename,
+                    sqlContent,
+                    size: Buffer.byteLength(sqlContent, 'utf8'),
+                    date: new Date()
+                };
             }
-
-            return {
-                success: true,
-                filename,
-                filepath,
-                size: fs.statSync(filepath).size,
-                date: new Date()
-            };
         } catch (error) {
             console.error('Error creando backup:', error);
             throw new Error(`Error al crear backup: ${error.message}`);
@@ -174,17 +244,27 @@ class BackupManager {
             throw new Error('Archivo de backup no encontrado');
         }
 
-        // Obtener credenciales de la base de datos
-        const dbHost = process.env.DB_HOST || 'localhost';
-        const dbUser = process.env.DB_USER || 'root';
-        const dbPassword = process.env.DB_PASSWORD || '';
-        const dbName = process.env.DB_NAME || 'sistema_facturacion';
-
-        // Construir comando mysql para restaurar
-        const command = `mysql -h ${dbHost} -u ${dbUser} ${dbPassword ? `-p${dbPassword}` : ''} ${dbName} < "${filepath}"`;
-
         try {
-            await execPromise(command);
+            // Leer el archivo SQL
+            const sqlContent = fs.readFileSync(filepath, 'utf8');
+
+            // Dividir en declaraciones SQL individuales
+            const statements = sqlContent
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+            // Ejecutar cada declaración
+            for (const statement of statements) {
+                try {
+                    await db.query(statement);
+                } catch (error) {
+                    console.error('Error ejecutando statement:', statement.substring(0, 100));
+                    console.error(error);
+                    // Continuar con las demás declaraciones
+                }
+            }
+
             console.log(`Backup restaurado exitosamente: ${filename}`);
 
             return {
