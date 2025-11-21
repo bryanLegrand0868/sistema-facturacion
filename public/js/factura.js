@@ -159,11 +159,11 @@ $(document).ready(function() {
         $('#precio').val(precio);
     }
 
-    // Variables para la factura
-    let productosFactura = [];
-    let totalFactura = 0;
+    // Variables para el ticket
+    let productosTicket = [];
+    let totalTicket = 0;
 
-    // Agregar producto a la factura
+    // Agregar producto al ticket
     $('#agregarProducto').click(function() {
         if (!productoSeleccionado) {
             mostrarAlerta('warning', 'Por favor seleccione un producto');
@@ -190,7 +190,7 @@ $(document).ready(function() {
             stock: productoSeleccionado.stock || 0
         };
 
-        productosFactura.push(item);
+        productosTicket.push(item);
         actualizarTablaProductos();
         limpiarFormularioProducto();
     });
@@ -199,10 +199,10 @@ $(document).ready(function() {
     function actualizarTablaProductos() {
         const tbody = $('#productosTabla');
         tbody.empty();
-        totalFactura = 0;
+        totalTicket = 0;
 
-        productosFactura.forEach((item, index) => {
-            totalFactura += item.subtotal;
+        productosTicket.forEach((item, index) => {
+            totalTicket += item.subtotal;
             tbody.append(`
                 <tr>
                     <td>${item.nombre}</td>
@@ -219,12 +219,12 @@ $(document).ready(function() {
             `);
         });
 
-        $('#totalFactura').text(totalFactura.toFixed(2));
+        $('#totalTicket').text(totalTicket.toFixed(2));
     }
 
     // Función para eliminar producto
     window.eliminarProducto = function(index) {
-        productosFactura.splice(index, 1);
+        productosTicket.splice(index, 1);
         actualizarTablaProductos();
     };
 
@@ -240,15 +240,15 @@ $(document).ready(function() {
 
     // Función para limpiar el formulario completo
     function limpiarFormulario(mantenerPedidoId = false) {
-        productosFactura = [];
-        totalFactura = 0;
+        productosTicket = [];
+        totalTicket = 0;
         actualizarTablaProductos();
         $('#cliente').val('');
         $('#cliente_id').val('');
         $('#infoCliente').hide();
         $('#formaPago').val('efectivo');
         limpiarFormularioProducto();
-        
+
         // Solo limpiar el ID si no se indica mantenerlo
         if (!mantenerPedidoId) {
             localStorage.removeItem('pedidoActualId');
@@ -260,14 +260,14 @@ $(document).ready(function() {
         console.log('=== INICIO GUARDADO DE PEDIDO ===');
         const cliente_id = $('#cliente_id').val();
         const cliente_nombre = $('#cliente').val();
-        
+
         if (!cliente_id) {
             console.log('Error: No hay cliente seleccionado');
             mostrarAlerta('warning', 'Por favor seleccione un cliente');
             return;
         }
 
-        if (productosFactura.length === 0) {
+        if (productosTicket.length === 0) {
             console.log('Error: No hay productos en el pedido');
             mostrarAlerta('warning', 'Agregue al menos un producto al pedido');
             return;
@@ -279,8 +279,8 @@ $(document).ready(function() {
             cliente_nombre: cliente_nombre,
             direccion: $('#direccionCliente').text(),
             telefono: $('#telefonoCliente').text(),
-            productos: JSON.parse(JSON.stringify(productosFactura)),
-            total: totalFactura,
+            productos: JSON.parse(JSON.stringify(productosTicket)),
+            total: totalTicket,
             forma_pago: $('#formaPago').val(),
             fecha: new Date().toLocaleString()
         };
@@ -303,100 +303,100 @@ $(document).ready(function() {
     window.cargarPedido = function(index) {
         console.log('=== INICIO CARGA DE PEDIDO ===');
         console.log('Índice del pedido a cargar:', index);
-        
+
         const pedido = pedidosGuardados[index];
         console.log('Pedido encontrado:', pedido);
-        
+
         if (!pedido) {
             console.error('No se encontró el pedido');
             return;
         }
-        
+
         // Primero limpiar todo (sin eliminar el ID)
-        productosFactura = [];
-        totalFactura = 0;
+        productosTicket = [];
+        totalTicket = 0;
         actualizarTablaProductos();
         $('#cliente').val('');
         $('#cliente_id').val('');
         $('#infoCliente').hide();
         $('#formaPago').val('efectivo');
         limpiarFormularioProducto();
-        
+
         // Guardar el ID del pedido cargado
         localStorage.setItem('pedidoActualId', pedido.id);
         console.log('ID del pedido guardado en localStorage:', pedido.id);
         console.log('Verificación del ID guardado:', localStorage.getItem('pedidoActualId'));
-        
+
         // Cargar información del cliente
         $('#cliente').val(pedido.cliente_nombre);
         $('#cliente_id').val(pedido.cliente_id);
         $('#direccionCliente').text(pedido.direccion || 'No especificada');
         $('#telefonoCliente').text(pedido.telefono || 'No especificado');
         $('#infoCliente').show();
-        
+
         // Cargar productos
-        productosFactura = pedido.productos;
-        totalFactura = pedido.total;
-        
+        productosTicket = pedido.productos;
+        totalTicket = pedido.total;
+
         // Cargar forma de pago
         $('#formaPago').val(pedido.forma_pago || 'efectivo');
-        
+
         // Actualizar la tabla de productos
         actualizarTablaProductos();
-        
+
         // Cerrar el modal de pedidos
         $('#pedidosModal').modal('hide');
-        
+
         console.log('=== FIN CARGA DE PEDIDO ===');
         console.log('Estado final:', {
             pedidoId: pedido.id,
             cliente: pedido.cliente_nombre,
-            productos: productosFactura,
-            total: totalFactura
+            productos: productosTicket,
+            total: totalTicket
         });
     };
 
-    // Generar factura
-$('#generarFactura').click(async function() {
-    console.log('=== INICIO GENERACIÓN DE FACTURA ===');
+    // Generar ticket
+$('#generarTicket').click(async function() {
+    console.log('=== INICIO GENERACIÓN DE TICKET ===');
     const cliente_id = $('#cliente_id').val();
     const forma_pago = $('#formaPago').val();
-    
+
     if (!cliente_id) {
         console.log('Error: No hay cliente seleccionado');
         mostrarAlerta('warning', 'Por favor seleccione un cliente');
         return;
     }
 
-    if (productosFactura.length === 0) {
-        console.log('Error: No hay productos en la factura');
-        mostrarAlerta('warning', 'Agregue al menos un producto a la factura');
+    if (productosTicket.length === 0) {
+        console.log('Error: No hay productos en el ticket');
+        mostrarAlerta('warning', 'Agregue al menos un producto al ticket');
         return;
     }
 
-    const factura = {
+    const ticket = {
         cliente_id,
-        total: totalFactura,
+        total: totalTicket,
         forma_pago,
-        productos: productosFactura
+        productos: productosTicket
     };
 
-    console.log('Factura a enviar:', factura);
+    console.log('Ticket a enviar:', ticket);
 
     try {
         const response = await fetch('/api/facturas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(factura)
+            body: JSON.stringify(ticket)
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al generar la factura');
+            throw new Error(errorData.error || 'Error al generar el ticket');
         }
 
         const data = await response.json();
-        console.log('Factura generada exitosamente:', data);
+        console.log('Ticket generado exitosamente:', data);
 
         // Eliminar el pedido de localStorage si existe
         const pedidoId = localStorage.getItem('pedidoActualId');
@@ -408,13 +408,13 @@ $('#generarFactura').click(async function() {
 
         // Limpiar el formulario
         limpiarFormulario();
-        mostrarAlerta('success', 'Factura generada exitosamente');
+        mostrarAlerta('success', 'Ticket generado exitosamente');
 
         // Redirigir a la página de impresión en una nueva pestaña
         window.open(`/facturas/${data.id}/imprimir`, '_blank');
 
     } catch (error) {
-        console.error('Error al generar factura:', error);
+        console.error('Error al generar ticket:', error);
         mostrarAlerta('error', error.message);
     }
 });
@@ -470,27 +470,27 @@ $('#generarFactura').click(async function() {
         $('#pedidosModal').modal('show');
     });
 
-    // Función para facturar pedido directamente
+    // Función para generar ticket de pedido directamente
     window.facturarPedido = function(index) {
-        console.log('=== INICIO FACTURACIÓN DIRECTA DE PEDIDO ===');
+        console.log('=== INICIO GENERACIÓN DE TICKET DIRECTO ===');
         console.log('Índice del pedido:', index);
         const pedido = pedidosGuardados[index];
-        console.log('Pedido a facturar:', pedido);
-        
+        console.log('Pedido a convertir en ticket:', pedido);
+
         // Primero eliminar el pedido
         pedidosGuardados.splice(index, 1);
         actualizarLocalStorage();
         console.log('Pedido eliminado de la lista');
-        
+
         // Cerrar el modal de pedidos
         $('#pedidosModal').modal('hide');
-        
+
         // Cargar el pedido
         cargarPedido(pedido);
-        
-        // Generar la factura
+
+        // Generar el ticket
         setTimeout(() => {
-            $('#generarFactura').click();
+            $('#generarTicket').click();
         }, 500);
     };
 
